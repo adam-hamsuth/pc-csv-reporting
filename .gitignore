@@ -1,0 +1,4 @@
+*.yml
+*.json
+output/*
+__pycache__
