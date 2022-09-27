@@ -2,3 +2,7 @@
 *.json
 output/*
 __pycache__
+
+env
+
+*.csv
