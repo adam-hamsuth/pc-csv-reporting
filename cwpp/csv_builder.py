@@ -10,7 +10,10 @@ def convert(input):
     if type(input) == list:
         return '"' + str(input) + '"'
     else:
-        return str(input)
+        if not input:
+            return 'None'
+        else:
+            return str(input)
 
 #==================================================================================================
 
@@ -138,12 +141,32 @@ def convert_to_query(path, json_keys):
 
 def build_csv(output_file_path, paths, json_keys, json_data):
     with open(output_file_path, 'w') as outfile:
-        headers = ""
-        for p in paths:
-            if paths.index(p) != len(paths)-1:
-                headers += p + ','
+        #TODO make sure non-list headers are written first so the order matches up
+
+        val_headers = []
+        list_val_headers = []
+        for path in paths:
+            query = convert_to_query(path, json_keys)
+            value = jmespath.search(query, json_data[0])
+            if type(value) != list:
+                val_headers.append(path)
             else:
-                headers += p
+                list_val_headers.append(path)
+
+        headers = ""
+        for h in val_headers:
+            if val_headers.index(h)+1 != len(val_headers):
+                headers += h + ','
+            elif list_val_headers != []:
+                headers += h + ','
+            else:
+                headers += h
+        for h in list_val_headers:
+            if list_val_headers.index(h)+1 != len(list_val_headers):
+                headers += h + ','
+            else:
+                headers += h
+
         headers += '\n'
         outfile.write(headers)
 
