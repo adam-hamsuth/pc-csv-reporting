@@ -19,7 +19,10 @@ def convert(input):
 
 def print_paths(template):
     for val in template:
-        print(val['path'], val['type'])
+        if val['type'] == type(None):
+            print(val['path'], val['parent_type'])
+        else:
+            print(val['path'], val['type'])
 
 #==================================================================================================
 
@@ -67,10 +70,47 @@ def create_query_string(path, parent_type):
 
     return new_path
 
+def create_query_string2(path, parent_type):
+    path_args = path.split('.')
+    for i in range(len(path_args)):
+        if ' ' in path_args[i] or '-' in path_args[i]:
+            path_args[i] = '"' + path_args[i] + '"'
+
+    root = path_args[0]
+
+    new_path = ""
+    new_path += root
+
+    temp_path_base = root
+    for index in path_args[1:]: #dont need first value
+        temp_path = temp_path_base + '.' + index
+        if parent_type == list:
+            new_path += "[0]."
+        else:
+            new_path += "."
+
+        temp_path_base = temp_path
+        new_path += index
+
+    return new_path
+
 #==================================================================================================
+
+def update_types(json_keys, obj):
+    for key in json_keys:
+        curr_type = key['type']
+        print(curr_type)
+        query = create_query_string2(key['path'], key['parent_type'])
+        for blob in obj:
+            val = jmespath.search(query, blob)
+            if type(val) != type(None):
+                curr_type = type(val)
+
+        json_keys[json_keys.index(key)]['type'] = curr_type
 
 #BUG jmespath returns NoneType on most searches???
 def get_object_keys(json_keys: list, obj: object, path: str, parent_type: str, parent_path:str) -> list:
+
     curr_list = []
     for key in obj.keys():
         curr_path = ''
@@ -84,23 +124,18 @@ def get_object_keys(json_keys: list, obj: object, path: str, parent_type: str, p
 
         query = create_query_string(curr_path, parent_type)
 
-        print('Query:', query)
-
         value = jmespath.search(query, obj)
         my_type = type(value)
-        print(my_type)
-        print(value)
-        print()
 
         if type(obj[key]) == dict:
             curr_list.append({'field':key, 'type':my_type, 'parent_type':parent_type, 'path':curr_path, 'parent_path':parent_path})
             get_object_keys(json_keys, obj[key], curr_path, my_type, parent_path)
         elif type(obj[key]) == list:
+            curr_list.append({'field':key, 'type':my_type, 'parent_type':parent_type, 'path':curr_path, 'parent_path':parent_path})
             try:
-                curr_list.append({'field':key, 'type':my_type, 'parent_type':parent_type, 'path':curr_path, 'parent_path':parent_path})
                 get_object_keys(json_keys, obj[key][0], curr_path, my_type, parent_path)#if list is empty this might fail
             except:
-                pass
+                print('Nested list was empty. Skipping...')
         else:
             curr_list.append({'field':key, 'type':my_type, 'parent_type':parent_type, 'path':curr_path, 'parent_path':parent_path})
 
@@ -396,21 +431,25 @@ def build_csv(output_file_path, paths, json_keys, json_data):
                             outfile.write(csv_base + 'None' + ',None' + ',None' + '\n')
 
                 else:
-                    #TODO Needs work here. if one value is empty the other should still be written and vice versa
-                    #Different Path
-                    if list_values[0][1]:
+                    if list_values[0][1] and list_values[1][1] and list_values[2][1]:
                         for val in list_values[0][1]:
-                            if list_values[1][1]:
-                                for val1 in list_values[1][1]:
-                                    outfile.write(csv_base + convert(val) + ',' + convert(val1) + '\n')
-                            else:
-                                outfile.write(csv_base + convert(val) + ',None' + '\n')
-                    else:
-                        if list_values[1]:
                             for val1 in list_values[1][1]:
-                                    outfile.write(csv_base + 'None' + ',' + convert(val1) + '\n')
-                            else:
-                                outfile.write(csv_base + 'None' + ',None' + '\n')
+                                for val2 in list_values[2][1]:
+                                    outfile.write(csv_base + convert(val) + ',' + convert(val1) + ',' + convert(val2) + '\n')
+                    elif list_values[0][1] and list_values[1][1]:
+                        for val in list_values[0][1]:
+                            for val1 in list_values[1][1]:
+                                outfile.write(csv_base + convert(val) + ',' + convert(val1) + ',None' + '\n')
+                    elif list_values[1][1] and list_values[2][1]:
+                        for val in list_values[1][1]:
+                            for val1 in list_values[2][1]:
+                                outfile.write(csv_base + 'None' + ',' + convert(val) + ',' + convert(val1) + '\n')
+                    elif list_values[0][1] and list_values[2][1]:
+                        for val in list_values[0][1]:
+                            for val1 in list_values[2][1]:
+                                outfile.write(csv_base + convert(val) + ',None' + ',' + convert(val1) + '\n')
+                    else:
+                        outfile.write(csv_base + 'None' + ',None' + ',None' + '\n')
             else:
                 outfile.write(csv_base + '\n')
 
@@ -440,6 +479,7 @@ if __name__ == '__main__':
     res = cwp_session.request('GET', endpoint)
     json_template =[]
     get_object_keys(json_template, res.json()[0], '', '', '') #Used to validate fields
+    update_types(json_template, res.json()[0])
     json_data = res.json()
 
     fields = []
@@ -466,12 +506,3 @@ if __name__ == '__main__':
 
 
     #Sort fields to have array data at the end
-
-
-
-    
-
-
-
-
-

@@ -1,0 +1,44 @@
+data = {
+    vulns.cve: [123, 456, 789]
+    vulns.severity: [low, med, high]
+    tags.tag: ['cat', 'dog', 'cow']
+    imagename: 'adam'
+}
+
+imagename, vulns.cve, tags.tag
+
+adam,
+    123
+        low
+            cat
+
+
+adam, 123, cat
+adam, 123, dog
+
+adam, 456
+adam
+
+adam,123,low,cat
+adam,123,low,dog
+adam,123,low,cow
+adam,456,med,cat
+adam,456,med,dog
+adam,456,med,cow
+adam,789,high,cat
+adam,789,high,dog
+adam,789,high,cow
+
+
+
+for index in vulns.cve
+    print(vulns.cve, vulns.severity)
+    for index in tags:
+        print(tags)
+
+
+extract values we want, put it into a format we can process
+process the data
+
+
+when we find things that go together, store them as one string

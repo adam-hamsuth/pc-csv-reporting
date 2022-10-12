@@ -1,11 +1,12 @@
-import session_manager
+from pcpi import session_loader
 import json
 import os.path as path
 
 if __name__ == '__main__':
-    sessions = session_manager.load_config_create_session(file_mode=True, num_tenants=1)
+    session_manager = session_loader.load_from_env()
 
-    session = sessions[0]
+    session = session_manager.create_cspm_session()
+
 
     res = session.request('GET', 'v2/alert/rule')
     alert_data = res.json()
